@@ -3,7 +3,7 @@
 #include <ESP8266WebServer.h>             // Servidor WEB - GET, POST
 #include <FirebaseArduino.h>              // Biblioteca para acesso ao Firebase
 #include <EEPROM.h>                       // Biblioteca para gravacao na EEPROM
-#include <ctype.h>                        // Biblioteca p/ as funções isalpha isdigit toupper tolowe
+// #include <ctype.h>                        // Biblioteca p/ as funções isalpha isdigit toupper tolowe
 
 /* Local dos itens de configuracao na EEPROM */
 #define VERSION_START  500
@@ -13,9 +13,9 @@
 #define CONFIG_VERSION "1c"
 
 /* Define os pinos utilizados pelos sensores no ESP - Simulação de Relés + RESET */
-#define TMD1 D8         // Cor azul = relé 1
-#define TMD2 D7         // Cor verde = relé 2
-#define TMD3 D6         // Cor vermelho = relé 3
+#define t1 D8         // Cor azul = relé 1
+#define t2 D7         // Cor verde = relé 2
+#define t3 D6         // Cor vermelho = relé 3
 
 /* Cria as variaves que vao ser recebidas pelo APP */
 String FIREBASE_HOST = "";
@@ -46,11 +46,6 @@ String DS = "HMN";
 /* Sigla do Tipo de Dispositivo - Varia de acordo com dispositivo */
 String DT = "FLT";
 
-/* Cria as variaveis por tipo de dispositivo - FLT = Filtro de linha 3 portas */
-String t1 = "TMD1" ;
-String t2 = "TMD2" ;
-String t3 = "TMD3" ;
-
 /* Cria o endereco de Publicacao das informacoes = /UID/DS+DT+SMAC/ */
 String endpub = "" ;
 
@@ -68,19 +63,19 @@ struct ConfigStruct
 /* Configura os pinos GPIO - Padrao tudo ligado */
 void setupPins() {
 
-  pinMode(TMD1, OUTPUT);
-  digitalWrite(TMD1, LOW);
+  pinMode(t1, OUTPUT);
+  digitalWrite(t1, LOW);
 
-  pinMode(TMD2, OUTPUT);
-  digitalWrite(TMD2, LOW);
+  pinMode(t2, OUTPUT);
+  digitalWrite(t2, LOW);
 
-  pinMode(TMD3, OUTPUT);
-  digitalWrite(TMD3, LOW);
+  pinMode(t3, OUTPUT);
+  digitalWrite(t3, LOW);
 
 }
 
 /* Inicia Webserver para receber dados do APP */
-ESP8266WebServer server(80);
+ ESP8266WebServer server(80);
 
 /* Salva as configuracoes na EEPROM */
 void saveConfig()
@@ -98,9 +93,12 @@ void saveConfig()
 /* Parametros que serão Publicados no Firebase */
 void setupFirebase() {
   Firebase.begin(wifiConfig.firebaseHost, wifiConfig.firebaseAuth);
-  Firebase.setBool(endpub + "TMD1", true);
-  Firebase.setBool(endpub + "TMD2", true);
-  Firebase.setBool(endpub + "TMD3", true);
+  Firebase.setBool(endpub + "TMD1_COMANDO", true);
+  Firebase.setBool(endpub + "TMD1_STATUS", "on");
+  Firebase.setBool(endpub + "TMD2_COMANDO", true);
+  Firebase.setBool(endpub + "TMD2_STATUS", "on");
+  Firebase.setBool(endpub + "TMD3_COMANDO", true);
+  Firebase.setBool(endpub + "TMD2_STATUS", "on");
 }
 
 /* Carrega as configurações da EEPROM */
@@ -112,7 +110,6 @@ void loadConfig()
   for (int i = 0; i < 512; i++) {
     value = EEPROM.read(i);
     Serial.println("Posicao: " + String(i) + " Valor: " + String(value));
-
     ret = ret + value;
   }
 
@@ -135,7 +132,6 @@ void loadConfig()
 
     while (WiFi.status() != WL_CONNECTED) {
       delay(500);
-
       Serial.print(".");
     }
 
@@ -156,15 +152,15 @@ void loadConfig()
     WiFi.disconnect(true);
     delay(1000);
     WiFi.softAP(wifiConfig.ssid, wifiConfig.senha);
-    
     saveConfig();
   }
 }
 
-/* Apenas teste para checar servidor Web - Sera excluido posteriormente */
+/* Apenas teste para checar servidor Web - Sera excluido posteriormente 
 void chamadaok() {
   server.send(200, "text/html", "<h1>Ta no ar</h1>");
 }
+*/
 
 /* Estrutura para receber os dados via POST */
 void configWifiSubmit()
@@ -200,45 +196,10 @@ void configWifiSubmit()
   WiFi.disconnect(true);
   delay(1000);
   ESP.restart();
-
-  /*
-    pinMode(13, OUTPUT);
-    digitalWrite(13, HIGH); */
 }
 
-/* Checar se estamos realmente usando esta funcao para checagem de EEPROM */
-int checaEEPROM() {
 
-  //EEPROM.begin(512);
-
-  byte value;
-  int ret = 0;
-
-  for (int i = 0; i < 512; i++) {
-    value = EEPROM.read(i);
-    Serial.println("Posicao: " + String(i) + " Valor: " + String(value));
-
-    ret = ret + value;
-  }
-
-  Serial.println("Value: " + String(ret));
-  return ret;
-}
-
-/* Funcao que limpa o EEPROM - Atribuida ao botao RESET */
-void limpa_EEPROM() {
-  EEPROM.begin(512);
-
-  // write a 0 to all 512 bytes of the EEPROM
-  for (int i = 0; i < 512; i++)
-    EEPROM.write(i, 0);
-
-  /* turn the LED on when we're done - Acende o LED quando termina - checar LED vermelho piscando */
-  pinMode(13, OUTPUT);
-  digitalWrite(13, HIGH);
-  EEPROM.end();
-}
-
+/* Inicio do Setup */
 void setup() {
   delay(1000);
   Serial.begin(115200);
@@ -272,26 +233,30 @@ void setup() {
 
   /* Configura servidor WEB para receber dados via APP */
   server.on("/ler", HTTP_POST, configWifiSubmit);
-  server.on("/status", HTTP_GET, chamadaok);
+  //  server.on("/status", HTTP_GET, chamadaok);
+  
   server.begin();
 
-  Serial.println("Servidor HTTP iniciado");
+  //Serial.println("Servidor HTTP iniciado");
 }
 
 void loop() {
   server.handleClient();
 
-  /* Verifica o valor da TOMADA1 no Firebase */
-  bool tmd1Value = Firebase.getBool(endpub + "/TMD1");
-  digitalWrite(TMD1, tmd1Value ? HIGH : LOW);
+    /* Verifica o valor da TOMADA1 no Firebase */
+  bool tmd1Value = Firebase.getBool(endpub + "/TMD1_COMANDO");
+  digitalWrite(t1, tmd1Value ? HIGH : LOW);
+  Firebase.setBool(endpub + "TMD1_STATUS", tmd1Value);
 
   /* Verifica o valor da TOMADA2 no Firebase */
-  bool tmd2Value = Firebase.getBool(endpub + "/TMD2");
-  digitalWrite(TMD2, tmd2Value ? HIGH : LOW);
+  bool tmd2Value = Firebase.getBool(endpub + "/TMD2_COMANDO");
+  digitalWrite(t2, tmd2Value ? HIGH : LOW);
+  Firebase.setBool(endpub + "TMD2_STATUS", tmd2Value);
 
   /* Verifica o valor da TOMADA3 no Firebase */
-  bool tmd3Value = Firebase.getBool(endpub + "/TMD3");
-  digitalWrite(TMD3, tmd3Value ? HIGH : LOW);
+  bool tmd3Value = Firebase.getBool(endpub + "/TMD3_COMANDO");
+  digitalWrite(t3, tmd3Value ? HIGH : LOW);
+  Firebase.setBool(endpub + "TMD3_STATUS", tmd3Value);
 
 
   /* Mostra na Console dados para depuracao */
@@ -314,4 +279,3 @@ void loop() {
   /* Tempo para checagem de status das tomadas */
   delay(500);
 }
-
