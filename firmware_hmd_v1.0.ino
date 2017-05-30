@@ -58,7 +58,7 @@ void setup() {
   Serial.begin(115200);
 
   SPIFFS.begin();
-  
+
   String ssid = confs(0, 0, 1, "/confs.txt", "ssid=", 9);
   String senha = confs(0, 0, 1, "/confs.txt", "senha=", 9);
 
@@ -113,37 +113,45 @@ void loop() {
 
   if (!ap) {
 
-  // Apenas publique quando passar o tempo determinado
-  if(publishNewState){
-    Serial.println("Publicando novo estado");
-    
-    // Obtem os dados do sensor DHT 
-    float humidity = dht.readHumidity();
-    float temperature = dht.readTemperature();
+    // Apenas publique quando passar o tempo determinado
+    if (publishNewState) {
+      Serial.println("Publicando novo estado");
+
+      // Obtem os dados do sensor DHT
+      float humidity = dht.readHumidity();
+      float temperature = dht.readTemperature();
 
       Serial.println(humidity);
       Serial.println(temperature);
 
-      if(!isnan(humidity) && !isnan(temperature)){
-        
+      if (!isnan(humidity) && !isnan(temperature)) {
+        bool houveAlteracao = false;
         // Manda para o firebase
-           if (temperatura_aux != temperature){
-                Firebase.pushFloat(hard + "/tmp", temperature);
-                temperatura_aux = temperature;
-           }
+        if (temperatura_aux != temperature) {
 
-            if (humidade_aux != humidity){
-                Firebase.pushFloat(hard + "/hmd", humidity);    
-                humidade_aux = humidity;
-           }   
+          /* setFloat = insere os dados no mesmo nó, pushFloat = cria um nó para cada inserção */
+          //Firebase.setFloat(hard + "/tmp", temperature);
+          temperatura_aux = temperature;
+          houveAlteracao = true;
+        }
+
+        if (humidade_aux != humidity) {
+          //Firebase.setFloat(hard + "/umi", humidity);
+          humidade_aux = humidity;
+          houveAlteracao = true;
+        }
+
+        if ( houveAlteracao ) {
+          Firebase.setString(hard + "/topico", String(humidity)+"," + String(temperature) );
+        }
 
         publishNewState = false;
-        
-     }else{
-       Serial.println("Erro Publicando");
-     }
 
-  }
+      } else {
+        Serial.println("Erro Publicando");
+      }
+
+    }
   }
 
   if (!digitalRead(bttest))reset();
@@ -175,7 +183,7 @@ void loop() {
           Serial.println("nao tem");
 
         }
-        
+
       } else {
         delay(100);
         tim++;
@@ -186,7 +194,7 @@ void loop() {
         }
       }
     }
-    
+
     delay(1);
     client.stop();
     Serial.println("[Site saiu]");
