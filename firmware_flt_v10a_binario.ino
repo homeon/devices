@@ -43,12 +43,12 @@ void setup() {
   pinMode(bttest, INPUT);
   pinMode(btliga, INPUT); noInterrupts();
 
-  timer0_isr_init();
-  timer0_attachInterrupt(dt_agora);
+//  timer0_isr_init();
+//  timer0_attachInterrupt(dt_agora);
 
   //ciclo=ESP.getCycleCount() + 80000000;//ESP.getCycleCount()+1000;
 
-  timer0_write(ESP.getCycleCount() + (80000000 * 10));
+//  timer0_write(ESP.getCycleCount() + (80000000 * 10));
   interrupts();
 
   attachInterrupt(digitalPinToInterrupt(btliga), btok, FALLING);//_PULLUP
@@ -108,7 +108,9 @@ void setup() {
     }
 
     /* Cria endereço de publicação */
-    hard = confs(0, 0, 1, "/confs.txt", "uid=", 9) + "/HMNFLT" + smac.substring(7) + "/";
+    // hard = confs(0, 0, 1, "/confs.txt", "uid=", 9) + "/HMNFLT" + smac.substring(7) + "/";
+
+    hard = "users/" + confs(0, 0, 1, "/confs.txt", "uid=", 9) + "/dispositivos/FLT/HMNFLT" + smac.substring(7) + "/";
 
     /* Inicia o Firebase */
     Firebase.begin(confs(0, 0, 1, "/confs.txt", "firebaseHost=", 9), confs(0, 0, 1, "/confs.txt", "firebaseAuth=", 9));
@@ -198,5 +200,7 @@ void loop() {
     delay(1);
     client.stop();
   }
+ 
   yield();
+  
 }
